@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import time
 import re
 from prometheus_client import start_http_server, Counter, Histogram
