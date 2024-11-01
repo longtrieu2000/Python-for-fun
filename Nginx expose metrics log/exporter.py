@@ -12,7 +12,7 @@ log_regex = re.compile(r'^(?P<remote>[^ ]*) (?P<host>[^ ]*) (?P<user>[^ ]*) \[(?
 
 # Hàm xử lý log mới
 def process_new_logs(log_file):
-    log_file.seek(0, 2)  # Di chuyển đến cuối file
+    #log_file.seek(0, 2)  # Di chuyển đến cuối file
     while True:
         line = log_file.readline()
         if not line:
@@ -29,6 +29,9 @@ def process_new_logs(log_file):
             # Cập nhật metrics
             log_request_count.labels(method=method, status_code=status_code, path=path).inc()
             log_request_size.labels(method=method, path=path).observe(size)
+        else:
+            print("Không khớp:", line)
+ 
 
 # Chạy server Prometheus và bắt đầu đọc log
 if __name__ == '__main__':
