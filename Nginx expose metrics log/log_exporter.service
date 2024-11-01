@@ -1,0 +1,21 @@
+#/etc/systemd/system/log_exporter.service 
+# đây là file config để cho file py luôn chạy lại khi khởi động máy 
+[Unit]
+Description=Log Exporter for Prometheus
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /path/to/your/exporter.py
+Restart=always
+RestartSec=5
+User=vt_admin  # Hoặc tài khoản người dùng phù hợp
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=log_exporter
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl daemon-reload
+sudo systemctl enable log_exporter.service
+sudo systemctl start log_exporter.service
