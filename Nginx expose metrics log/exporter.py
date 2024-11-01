@@ -33,5 +33,5 @@ def process_new_logs(log_file):
 # Chạy server Prometheus và bắt đầu đọc log
 if __name__ == '__main__':
     start_http_server(8000)  # Khởi động server Prometheus tại port 8000
-    with open('/path/to/your/logfile.log', 'r') as log_file:
+    with open('/u01/deployments/nginx/log/mysafe.vietteltelecom.vn.access.log', 'r') as log_file:
         process_new_logs(log_file)
