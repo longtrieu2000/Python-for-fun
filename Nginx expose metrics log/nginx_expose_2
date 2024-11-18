@@ -1,0 +1,70 @@
+import re
+import time
+from prometheus_client import start_http_server, Counter, Histogram
+from tailer import follow
+
+# Define the regex for parsing log lines
+LOG_PATTERN = re.compile(
+    r'^(?P<remote>[^ ]*) (?P<host>[^ ]*) (?P<user>[^ ]*) \[(?P<time>[^\]]*)\] \"(?P<method>\w+)(?:\s+(?P<path>[^\"]*?)(?:\s+\S*)?)?\" (?P<status_code>[^ ]*) (?P<size>[^ ]*)(?:\s"(?P<referer>[^\"]*)") "(?P<agent>[^\"]*)"'
+)
+
+# Define Prometheus metrics
+size_bytes_total = Counter(
+    'nginx_size_bytes_total', 'Total bytes sent to the clients'
+)
+http_requests_total = Counter(
+    'nginx_http_requests_total', 'Total number of requests',
+    ['status_code', 'method', 'path']
+)
+http_request_duration_seconds = Histogram(
+    'nginx_http_request_duration_seconds', 'Duration of the request',
+    ['status_code', 'method', 'path']
+)
+
+def process_log_line(line):
+    """Process a single line of the log file."""
+    match = LOG_PATTERN.match(line)
+    if not match:
+        print(f"No match found for line: {line}")
+        return
+
+    result = match.groupdict()
+
+    try:
+        size = float(result['size'])
+        size_bytes_total.inc(size)
+    except ValueError:
+        pass
+
+    try:
+        duration = float(result['urt'])
+        http_request_duration_seconds.labels(
+            method=result['method'],
+            status_code=result['status_code'],
+            path=result['path']
+        ).observe(duration)
+    except ValueError:
+        pass
+
+    http_requests_total.labels(
+        method=result['method'],
+        status_code=result['status_code'],
+        path=result['path']
+    ).inc()
+
+def tail_log_file(log_path):
+    """Tail the log file and process each line."""
+    for line in follow(open(log_path, 'r')):
+        process_log_line(line)
+
+if __name__ == '__main__':
+    # Configuration
+    LOG_PATH = '/var/log/nginx/access.log'
+    PROMETHEUS_PORT = 9150
+
+    # Start Prometheus metrics server
+    print(f"Starting Prometheus metrics server on port {PROMETHEUS_PORT}")
+    start_http_server(PROMETHEUS_PORT)
+
+    # Start tailing the log file
+    tail_log_file(LOG_PATH)
