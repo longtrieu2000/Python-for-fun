@@ -52,9 +52,7 @@ def process_new_logs(log_file, source_label):
             #daily_request_times[log_date] += 1
             key_request_time = log_date + "-request_time"
             #key_response_time = log_date + "-response_time"
-            x = {
-                key_request_time: [0, 0]
-            }
+
             if daily_request_times.get(key_request_time) is None:
                 daily_request_times[key_request_time] = [0,0]
 
