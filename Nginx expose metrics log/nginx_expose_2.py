@@ -15,12 +15,16 @@ log_regex = re.compile(
 log_request_count_total = Counter(
     'log_request_count_total', 'Total number of requests', ['method', 'path', 'status_code', 'source']
 )
-status_2xx_count = Gauge('status_2xx_count', 'Total count of 2xx status codes', ['source'])
-status_4xx_count = Gauge('status_4xx_count', 'Total count of 4xx status codes', ['source'])
-status_5xx_count = Gauge('status_5xx_count', 'Total count of 5xx status codes', ['source'])
-avg_request_time = Gauge('avg_request_time_seconds', 'Average request time by date and source', ['date', 'source'])
+vcs_mysafe_status_2xx_count = Gauge('vcs_mysafe_status_2xx_count', 'Total count of 2xx status codes', ['source'])
+vcs_mysafe_status_4xx_count = Gauge('vcs_mysafe_status_4xx_count', 'Total count of 4xx status codes', ['source'])
+vcs_mysafe_status_5xx_count = Gauge('vcs_mysafe_status_5xx_count', 'Total count of 5xx status codes', ['source'])
+avg_request_time_total = Gauge('avg_request_time_seconds_total', 'Average request time by date and source', ['date', 'source'])
 logee = "api"
 slow_request_metric = Counter('slow_request_count', 'Requests with request_time > 5s', ['method', 'path', 'status_code', 'source'])
+avg_time_categories = Gauge('avg_time_filters_categories', 'Average request time for /filters/CATEGORIES', ['source'])
+avg_time_domain = Gauge('avg_time_filters_domain', 'Average request time for /filters/DOMAIN', ['source'])
+name_categories = "/filters/CATEGORIES"
+name_domains = "/filters/DOMAINS"
 # Lưu dữ liệu thời gian request theo ngày cho từng file log
 daily_request_times = {}
 
@@ -73,12 +77,30 @@ def process_new_logs(log_file, source_label):
             #    sum(daily_request_times[source_label][log_date])
              #   / len(daily_request_times[source_label][log_date])
             #)
-            avg_request_time.labels(date=log_date, source=source_label).set(sum_avg_request_time)
+            avg_request_time_total.labels(date=log_date, source=source_label).set(sum_avg_request_time)
+            if name_categories in path:
+                if categories_times.get(source_label) is None:
+                    categories_times[source_label] = [0, 0]
+                categories_times[source_label][0] += request_time
+                categories_times[source_label][1] += 1
+                avg_categories = categories_times[source_label][0] / categories_times[source_label][1]
+                avg_time_categories.labels(source=source_label).set(avg_categories)
+
+            # Xử lý request_time cho /filters/DOMAIN
+            if name_domains in path:
+                if domain_times.get(source_label) is None:
+                    domain_times[source_label] = [0, 0]
+                domain_times[source_label][0] += request_time
+                domain_times[source_label][1] += 1
+                avg_domain = domain_times[source_label][0] / domain_times[source_label][1]
+                avg_time_domain.labels(source=source_label).set(avg_domain)
+            
             if request_time > 5.0:
                 slow_request_metric.labels(
                     method=method, path=path, status_code=status_code, source=source_label
                 ).inc()
             # Tính tổng các trạng thái
+            
             if status_code.startswith('2') and path is not None and logee in path:
                 total_2xx += 1
             elif status_code.startswith('4') and path is not None and logee in path:
@@ -93,9 +115,9 @@ def process_new_logs(log_file, source_label):
                 ).inc()
 
             # Cập nhật các metrics tổng
-            status_2xx_count.labels(source=source_label).set(total_2xx)
-            status_4xx_count.labels(source=source_label).set(total_4xx)
-            status_5xx_count.labels(source=source_label).set(total_5xx)
+            vcs_mysafe_status_2xx_count.labels(source=source_label).set(total_2xx)
+            vcs_mysafe_status_4xx_count.labels(source=source_label).set(total_4xx)
+            vcs_mysafe_status_5xx_count.labels(source=source_label).set(total_5xx)
 
 # Chạy server Prometheus và bắt đầu đọc log
 if __name__ == '__main__':
